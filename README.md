@@ -1,77 +1,121 @@
 # Git Commit Report
 
-Analyse Git commit history for any team or repository over a given date range. Generates colour-coded terminal reports **and** an interactive web dashboard with charts.
+A visual developer activity dashboard for any Git repository. Enter a repo path and date range, and instantly explore interactive charts covering commits, code ownership, velocity, productivity patterns, and more.
 
 ![Bash](https://img.shields.io/badge/Bash-4.0%2B-green)
 ![Node](https://img.shields.io/badge/Node-18%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
+![Dashboard Preview](assets/dashboard-preview.png)
+
 ---
 
 ## Features
 
-- **Terminal report** — a single shell script that prints a rich, colour-coded analysis directly in your terminal.
-- **Web dashboard** — a React + Chart.js app served by a lightweight Express backend for interactive exploration.
-- **Zero external dependencies for the CLI** — only requires Git and Bash.
+- **Interactive dashboard** — React + Chart.js frontend with a lightweight Express backend. Point it at any local repo and explore the data visually.
 - **Flexible date ranges** — supports ISO dates (`2024-01-01`) and natural language (`30 days ago`).
 - **Team filtering** — analyse specific team members or automatically discover all contributors.
 - **Ticket tracking** — extract and count ticket references (JIRA, Linear, GitHub Issues, etc.) from commit messages.
+- **Export to Excel** — download your report data as a spreadsheet for sharing with stakeholders.
 
-### Report Sections
+### Dashboard Sections
 
 | Section | Description |
 |---|---|
-| **Total Commits** | Headline count of commits in the date range |
+| **Summary Cards** | Total commits, contributors, files changed, lines added/removed |
 | **Commits by Author** | Horizontal bar chart per contributor |
-| **Commit Activity** | Day-by-day activity graph |
-| **File Change Statistics** | Unique files changed across all commits |
+| **Commit Size Distribution** | Pie chart of small, medium, and large commits |
+| **Commit Activity Over Time** | Day-by-day activity line chart |
+| **Weekly Commit Velocity** | Week-over-week trend of commit throughput |
+| **Commits by Day of Week** | Bar chart showing which days are busiest |
+| **Commits by Hour of Day** | Bar chart showing peak coding hours |
 | **Top 10 Most Changed Files** | Most frequently touched files |
-| **Lines Changed** | Insertions, deletions, and net lines |
-| **Lines of Code by File Type** | Breakdown by file extension (top 15) |
-| **Most Recent File Changes** | 15 most recently modified files with commit details |
-| **Productivity Patterns** | Streaks, working hours, avg commit cadence per developer |
-| **Developer Summary** | Tickets, commits, and commits-per-ticket ratio |
-| **Ticket Breakdown** | Per-developer list of every ticket reference |
-
-The web dashboard adds additional visualisations: commit size distribution, weekly velocity, code ownership, commits by day-of-week and hour, and lines changed per author.
+| **Commit Message Quality** | Breakdown of message length and formatting |
+| **Lines of Code by File Type** | Breakdown by file extension |
+| **Lines Changed per Developer** | Insertions vs deletions per author |
+| **Code Ownership** | Proportional ownership across the codebase |
+| **Most Recent File Changes** | Latest modified files with commit details |
 
 ---
 
 ## Quick Start
 
-### Terminal Report (CLI)
-
 ```bash
 git clone https://github.com/presencewebdesign/git-history-report.git
-cd git-history-report
-
-# Run against any local repo
-bash show-commits.sh '30 days ago' 'now' /path/to/repo
-```
-
-### Web Dashboard
-
-```bash
-cd app
+cd git-history-report/app
 npm install
 npm run dev
 ```
 
-Then open [http://localhost:5173](http://localhost:5173) in your browser, enter a repository path and date range, and click **Generate Report**.
+Open [http://localhost:5173](http://localhost:5173), enter a repository path and date range, and click **Generate Report**.
 
----
+### Prerequisites
 
-## Prerequisites
-
-- **Bash 4.0+** (macOS or Linux)
+- **Node.js 18+** and **npm**
 - **Git** on your `PATH`
-- **Node.js 18+** and **npm** (for the web dashboard only)
+- **Bash 4.0+** (macOS or Linux) — the backend runs a shell script to collect Git data
 
 ---
 
-## CLI Usage
+## Running the Dashboard
+
+### Development
+
+```bash
+cd app
+npm install
+npm run dev          # starts both frontend (port 5173) and backend (port 3001)
+```
+
+### Production Build
+
+```bash
+cd app
+npm run build        # outputs to app/dist/
+npm run preview      # preview the production build
+```
+
+> **Note:** The backend server must be running for the dashboard to function. It executes Git commands on the server against the repository path you provide. The dashboard is designed for **local use** — if you expose it on a network, be aware it runs Git commands against local file paths supplied by the user.
+
+---
+
+## Configuration
+
+### Ticket Prefix
+
+Enter your project's ticket prefix in the dashboard form when generating a report (e.g. `PROJ-`, `JIRA-`, `LINEAR-`). The dashboard will extract matching references from commit messages and display ticket-level breakdowns per developer.
+
+---
+
+## Project Structure
 
 ```
+.
+├── app/
+│   ├── server/
+│   │   └── index.ts          # Express API server
+│   ├── src/
+│   │   ├── App.tsx           # Main React app
+│   │   ├── components/       # Dashboard chart and card components
+│   │   ├── exportToExcel.ts  # Excel export utility
+│   │   ├── types.ts          # TypeScript type definitions
+│   │   └── styles/           # CSS styles
+│   ├── package.json
+│   └── vite.config.ts
+├── collect-data.sh           # Data collector (outputs JSON, used by the backend)
+├── show-commits.sh           # Bonus: standalone CLI report (see below)
+├── assets/
+│   └── dashboard-preview.png
+└── README.md
+```
+
+---
+
+## Bonus: Terminal Report (CLI)
+
+If you prefer a terminal-only workflow, `show-commits.sh` is a standalone Bash script that prints a rich, colour-coded analysis directly in your terminal — no Node.js required.
+
+```bash
 bash show-commits.sh <start-date> <end-date> <repo-path>
 ```
 
@@ -83,22 +127,9 @@ bash show-commits.sh '30 days ago' 'now' /path/to/repo
 bash show-commits.sh '1 year ago' 'now' .
 ```
 
-Make the script executable to skip `bash`:
+### CLI Configuration
 
-```bash
-chmod +x show-commits.sh
-./show-commits.sh '30 days ago' 'now' /path/to/repo
-```
-
----
-
-## Configuration
-
-### Team Members
-
-Open `show-commits.sh` and edit the `TEAM` array.
-
-**Option A — Specific members:**
+Edit the `TEAM` array in `show-commits.sh` to filter by specific team members:
 
 ```bash
 TEAM=(
@@ -107,77 +138,14 @@ TEAM=(
 )
 ```
 
-Use `\|` to merge multiple Git identities for the same person.
-
-**Option B — All authors (default):**
+Leave the array empty to automatically discover all authors. Set `TICKET_PREFIX` to match your tracker:
 
 ```bash
-TEAM=()
+TICKET_PREFIX="PROJ-"
 ```
 
-When empty, the script automatically discovers every author who committed in the date range.
-
-### Ticket Prefix
-
-Set `TICKET_PREFIX` at the top of `show-commits.sh` to match your project tracker:
-
-```bash
-TICKET_PREFIX="PROJ-"   # e.g. "JIRA-", "ISSUE-", "LINEAR-"
-```
-
-For the web dashboard, enter the ticket prefix in the form when generating a report.
-
----
-
-## Web Dashboard
-
-The web dashboard lives in the `app/` directory and consists of:
-
-- **Frontend** — React 18 + Vite + Chart.js
-- **Backend** — Express server that runs `collect-data.sh` and returns JSON
-
-### Running
-
-```bash
-cd app
-npm install
-npm run dev          # starts both frontend (port 5173) and backend (port 3001)
-```
-
-### Building for Production
-
-```bash
-cd app
-npm run build        # outputs to app/dist/
-npm run preview      # preview the production build
-```
-
-> **Note:** The backend server must be running for the dashboard to function. It executes Git commands on the server against the repository path you provide.
-
----
-
-## Project Structure
-
-```
-.
-├── show-commits.sh      # CLI terminal report
-├── collect-data.sh      # Data collector (outputs JSON, used by the web backend)
-├── app/
-│   ├── server/
-│   │   └── index.ts     # Express API server
-│   ├── src/
-│   │   ├── App.tsx      # Main React app
-│   │   ├── components/  # Dashboard chart and card components
-│   │   ├── types.ts     # TypeScript type definitions
-│   │   └── styles/      # CSS styles
-│   ├── package.json
-│   └── vite.config.ts
-└── README.md
-```
-
----
-
-## Example Output (CLI)
+<details>
+<summary>Example CLI output</summary>
 
 ```
 ═══════════════════════════════════════════════════════
@@ -199,6 +167,8 @@ npm run preview      # preview the production build
   2024-01-17 ▪     1
 ```
 
+</details>
+
 ---
 
 ## Contributing
@@ -215,12 +185,3 @@ Contributions are welcome! Feel free to open an issue or submit a pull request.
 ## License
 
 This project is open source under the [MIT License](LICENSE).
-
----
-
-## Notes
-
-- The `<repo-path>` argument can be an absolute or relative path to any local Git repository.
-- Colour output uses ANSI escape codes — best viewed in a modern terminal (iTerm2, Terminal.app, Windows Terminal, etc.).
-- Git author names are taken from commit metadata, which may differ from GitHub usernames or display names.
-- The web dashboard is designed for **local use**. If you expose it on a network, be aware that it executes Git commands against local file paths provided by the user.
