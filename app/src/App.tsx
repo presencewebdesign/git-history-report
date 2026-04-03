@@ -18,6 +18,7 @@ import WeeklyVelocityChart from "./components/WeeklyVelocityChart";
 import CodeOwnershipChart from "./components/CodeOwnershipChart";
 import CommitMessageStatsCard from "./components/CommitMessageStatsCard";
 import LinesByAuthorChart from "./components/LinesByAuthorChart";
+import { exportReportToExcel } from "./exportToExcel";
 
 type AppState = "form" | "loading" | "report" | "error";
 
@@ -163,9 +164,14 @@ function Dashboard({ data, onReset }: { data: ReportData; onReset: () => void })
         <div className="meta-item">
           Generated: <strong>{new Date(data.meta.generatedAt).toLocaleString()}</strong>
         </div>
-        <button className="btn-reset" onClick={onReset}>
-          New Report
-        </button>
+        <div className="meta-actions">
+          <button className="btn-export" onClick={() => exportReportToExcel(data)}>
+            Export to Excel
+          </button>
+          <button className="btn-reset" onClick={onReset}>
+            New Report
+          </button>
+        </div>
       </div>
 
       <div className="stat-cards">

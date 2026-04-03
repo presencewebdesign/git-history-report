@@ -382,6 +382,34 @@ input[type="date"].date-input:focus {
   font-weight: 600;
 }
 
+.meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.btn-export {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.btn-export:hover {
+  opacity: 0.88;
+}
+
+.btn-export:active {
+  transform: scale(0.97);
+}
+
 .btn-reset {
   padding: 0.5rem 1rem;
   background: transparent;
@@ -391,7 +419,7 @@ input[type="date"].date-input:focus {
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.2s;
-  margin-left: auto;
+  white-space: nowrap;
 }
 
 .btn-reset:hover {

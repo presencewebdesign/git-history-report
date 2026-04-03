@@ -52,7 +52,7 @@ bash show-commits.sh '30 days ago' 'now' /path/to/repo
 ### Web Dashboard
 
 ```bash
-cd web-app
+cd app
 npm install
 npm run dev
 ```
@@ -131,7 +131,7 @@ For the web dashboard, enter the ticket prefix in the form when generating a rep
 
 ## Web Dashboard
 
-The web dashboard lives in the `web-app/` directory and consists of:
+The web dashboard lives in the `app/` directory and consists of:
 
 - **Frontend** — React 18 + Vite + Chart.js
 - **Backend** — Express server that runs `collect-data.sh` and returns JSON
@@ -139,7 +139,7 @@ The web dashboard lives in the `web-app/` directory and consists of:
 ### Running
 
 ```bash
-cd web-app
+cd app
 npm install
 npm run dev          # starts both frontend (port 5173) and backend (port 3001)
 ```
@@ -147,8 +147,8 @@ npm run dev          # starts both frontend (port 5173) and backend (port 3001)
 ### Building for Production
 
 ```bash
-cd web-app
-npm run build        # outputs to web-app/dist/
+cd app
+npm run build        # outputs to app/dist/
 npm run preview      # preview the production build
 ```
 
@@ -162,7 +162,7 @@ npm run preview      # preview the production build
 .
 ├── show-commits.sh      # CLI terminal report
 ├── collect-data.sh      # Data collector (outputs JSON, used by the web backend)
-├── web-app/
+├── app/
 │   ├── server/
 │   │   └── index.ts     # Express API server
 │   ├── src/
