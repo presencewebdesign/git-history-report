@@ -9,7 +9,7 @@ All notable changes to this project are documented in this file.
 - **Local folder picker** — Browse button opens your OS folder dialog (macOS, Linux, Windows) and fills the repository path automatically.
 - **Repository source toggle** — Switch between **Local path** and **Public URL** when generating a report.
 - **Public URL validation** — Remote URLs are checked before you run a report. Accessible public repos show a green valid state; private or unreachable repos show red with a clear error message.
-- **API endpoints** — `POST /api/browse-folder` and `POST /api/validate-repo` power the new UI flows.
+- **Local server routes** — The dashboard’s own Express backend exposes `POST /api/browse-folder` and `POST /api/validate-repo` on localhost only. These are not third-party or cloud APIs; the UI talks to your local dev server. Folder selection stays on your machine. For public URLs, validation runs `git ls-remote` against the repo host you entered—no repo data is uploaded elsewhere.
 
 ### Changed
 
