@@ -51,6 +51,25 @@ function looksLikeUnsupportedRemote(input: string): boolean {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(input) || /^git@[^:]+:/i.test(input);
 }
 
+async function repairHeadIfPointingAtRemote(repoPath: string) {
+  const { stdout } = await execFileAsync("git", ["-C", repoPath, "symbolic-ref", "-q", "HEAD"], {
+    timeout: COMMAND_TIMEOUT_MS,
+  }).catch(() => ({ stdout: "", stderr: "" }));
+
+  const headRef = stdout.trim();
+  if (!headRef.startsWith("refs/remotes/")) return;
+
+  const { stdout: commit } = await execFileAsync("git", ["-C", repoPath, "rev-parse", "HEAD"], {
+    timeout: COMMAND_TIMEOUT_MS,
+  });
+  await execFileAsync("git", ["-C", repoPath, "update-ref", "refs/heads/__repo_cache_head", commit.trim()], {
+    timeout: COMMAND_TIMEOUT_MS,
+  });
+  await execFileAsync("git", ["-C", repoPath, "symbolic-ref", "HEAD", "refs/heads/__repo_cache_head"], {
+    timeout: COMMAND_TIMEOUT_MS,
+  });
+}
+
 async function setHeadToRemoteDefault(repoPath: string) {
   await execFileAsync("git", ["-C", repoPath, "remote", "set-head", "origin", "-a"], {
     timeout: COMMAND_TIMEOUT_MS,
@@ -66,7 +85,16 @@ async function setHeadToRemoteDefault(repoPath: string) {
     throw new Error("Could not determine remote default branch");
   }
 
-  await execFileAsync("git", ["-C", repoPath, "symbolic-ref", "HEAD", remoteHeadRef], {
+  const localBranch = remoteHeadRef.slice("refs/remotes/origin/".length);
+  const localBranchRef = `refs/heads/${localBranch}`;
+  const { stdout: remoteCommit } = await execFileAsync("git", ["-C", repoPath, "rev-parse", remoteHeadRef], {
+    timeout: COMMAND_TIMEOUT_MS,
+  });
+
+  await execFileAsync("git", ["-C", repoPath, "update-ref", localBranchRef, remoteCommit.trim()], {
+    timeout: COMMAND_TIMEOUT_MS,
+  });
+  await execFileAsync("git", ["-C", repoPath, "symbolic-ref", "HEAD", localBranchRef], {
     timeout: COMMAND_TIMEOUT_MS,
   });
 }
@@ -108,6 +136,7 @@ async function resolveRepoInput(repoInput: string): Promise<{ path: string; disp
       }
     }
   } else {
+    await repairHeadIfPointingAtRemote(cachedPath);
     await execFileAsync("git", ["-C", cachedPath, "fetch", "--prune", "origin"], {
       timeout: COMMAND_TIMEOUT_MS,
       maxBuffer: 10 * 1024 * 1024,

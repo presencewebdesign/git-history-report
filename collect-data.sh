@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # collect-data.sh
 # Outputs git commit analysis as JSON for the web dashboard
 #
@@ -14,6 +14,8 @@ START_DATE=$1
 END_DATE=$2
 REPO_PATH=$3
 JIRA_KEY=${4:-}
+JIRA_REGEX="a^"
+[ -n "$JIRA_KEY" ] && JIRA_REGEX="${JIRA_KEY}-[0-9]+"
 
 TEAM=()
 if [ -n "$TEAM_CONFIG" ]; then
@@ -53,7 +55,10 @@ fi
 cd "$REPO_PATH" || { echo '{"error":"Could not cd to repo path"}' >&2; exit 1; }
 
 if [ "$TEAM_MODE" = "all" ]; then
-    mapfile -t all_authors < <(git log --since="$START_DATE" --until="$END_DATE" --pretty=format:"%an|%ae" | sort -u)
+    all_authors=()
+    while IFS= read -r author_line; do
+        all_authors+=("$author_line")
+    done < <(git log --since="$START_DATE" --until="$END_DATE" --pretty=format:"%an|%ae" | sort -u)
     for author_line in "${all_authors[@]}"; do
         IFS='|' read -r name email <<< "$author_line"
         [ -n "$name" ] && USERNAMES+=("$name ($email)")
@@ -166,7 +171,7 @@ git_log_filtered --name-only --pretty=format:"%h|%ad|%s" --date=short | awk -F'|
         }
     }
 ' | while IFS='|' read -r date hash filename subject; do
-    jira=$(echo "$subject" | grep -oE "${JIRA_KEY}-[0-9]+" | head -1)
+    jira=$(echo "$subject" | grep -oE "$JIRA_REGEX" | head -1)
     printf '{"date":"%s","hash":"%s","file":"%s","subject":"%s","jira":"%s"},' \
         "$date" "$hash" "$(escape_json "$filename")" "$(escape_json "$subject")" "$jira"
 done | sed 's/,$//' > /tmp/rfc_$$.json
@@ -238,7 +243,7 @@ if [ ${#USERNAMES[@]} -gt 0 ]; then
             fi
 
             # JIRA tickets
-            unique_tickets=$(git_log_for_author "$author_filter" --pretty=format:"%s" | grep -oE "${JIRA_KEY}-[0-9]+" | sort | uniq | wc -l | tr -d ' ')
+            unique_tickets=$(git_log_for_author "$author_filter" --pretty=format:"%s" | grep -oE "$JIRA_REGEX" | sort | uniq | wc -l | tr -d ' ')
             commits_per_ticket=0
             [ "$unique_tickets" -gt 0 ] && commits_per_ticket=$((total / unique_tickets))
 
@@ -251,7 +256,7 @@ if [ ${#USERNAMES[@]} -gt 0 ]; then
                     [ $jb_first -eq 1 ] && jb_first=0 || jira_breakdown+=","
                     jira_breakdown+="{\"ticket\":\"$ticket\",\"commits\":$tc}"
                 fi
-            done <<< "$(git_log_for_author "$author_filter" --pretty=format:"%s" | grep -oE "${JIRA_KEY}-[0-9]+" | sort | uniq)"
+            done <<< "$(git_log_for_author "$author_filter" --pretty=format:"%s" | grep -oE "$JIRA_REGEX" | sort | uniq)"
             jira_breakdown+="]"
 
             [ $pp_first -eq 1 ] && pp_first=0 || productivity_json+=","
@@ -267,7 +272,7 @@ dc_first=1
 prev_date=""
 current_date_commits=""
 git_log_filtered --pretty=format:"%ad|%an|%h|%s" --date=short | sed "${AUTHOR_NORMALISE_SED:-}" | sort -t'|' -k1,1r | while IFS='|' read -r date author hash subject; do
-    jira=$(echo "$subject" | grep -oE "${JIRA_KEY}-[0-9]+" | head -1)
+    jira=$(echo "$subject" | grep -oE "$JIRA_REGEX" | head -1)
     day_of_week=$(date -j -f "%Y-%m-%d" "$date" "+%A" 2>/dev/null || date -d "$date" "+%A" 2>/dev/null)
     printf '%s|%s|%s|%s|%s|%s\n' "$date" "$day_of_week" "$author" "$hash" "$(escape_json "$subject")" "$jira"
 done > /tmp/dc_$$.json
@@ -368,7 +373,7 @@ msg_stats=$(git_log_filtered --pretty=format:"%s" | awk -v jira_key="$JIRA_KEY" 
 {
     total++
     len += length($0)
-    if ($0 ~ jira_key "-[0-9]+") with_ticket++
+    if (jira_key != "" && $0 ~ jira_key "-[0-9]+") with_ticket++
     words += split($0, w, " ")
 }
 END {

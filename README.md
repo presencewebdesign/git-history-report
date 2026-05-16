@@ -2,8 +2,8 @@
 
 A visual developer activity dashboard for any Git repository. Enter a repo path and date range, and instantly explore interactive charts covering commits, code ownership, velocity, productivity patterns, and more.
 
-![Bash](https://img.shields.io/badge/Bash-4.0%2B-green)
-![Node](https://img.shields.io/badge/Node-18%2B-blue)
+![Bash](https://img.shields.io/badge/Bash-5.x-green)
+![Node](https://img.shields.io/badge/Node-24.15%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 ![Dashboard Preview](assets/dashboard-preview.png)
@@ -51,9 +51,9 @@ Open [http://localhost:5173](http://localhost:5173), enter a repository path and
 
 ### Prerequisites
 
-- **Node.js 18+** and **npm**
+- **Node.js 24.15+** and **npm** (see `.nvmrc`)
 - **Git** on your `PATH`
-- **Bash 4.0+** (macOS or Linux) — the backend runs a shell script to collect Git data
+- **Bash 5.x recommended** (macOS or Linux; scripts remain compatible with macOS Bash 3.2) — the backend runs a shell script to collect Git data
 
 ---
 

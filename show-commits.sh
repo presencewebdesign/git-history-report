@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # show-commits.sh
 # Analyze Git commits between specific dates
 #
@@ -15,6 +15,8 @@ REPO_PATH=$3
 # JIRA / ticket prefix used to extract ticket references from commit messages
 # e.g. "PROJ-", "JIRA-"
 TICKET_PREFIX=""
+TICKET_REGEX="a^"
+[ -n "$TICKET_PREFIX" ] && TICKET_REGEX="${TICKET_PREFIX}[0-9]+"
 
 # Team members — format: "username:git author pattern"
 # Use \| in the pattern to merge multiple git identities for one person
@@ -72,7 +74,10 @@ if [ "$TEAM_MODE" = "all" ]; then
     echo -e "${YELLOW}TEAM array is empty - analyzing ALL authors in the repository${NC}\n"
     
     # Get all unique authors (name <email>) from the date range
-    mapfile -t all_authors < <(git log --since="$START_DATE" --until="$END_DATE" --pretty=format:"%an|%ae" | sort -u)
+    all_authors=()
+    while IFS= read -r author_line; do
+        all_authors+=("$author_line")
+    done < <(git log --since="$START_DATE" --until="$END_DATE" --pretty=format:"%an|%ae" | sort -u)
     
     # Build USERNAMES array from actual commit authors
     # Format: "Name (email)" for display
@@ -289,7 +294,7 @@ awk -F'|' '
     fi
     
     # Extract JIRA ticket if present
-    jira=$(echo "$subject" | grep -oE "${TICKET_PREFIX}[0-9]+" | head -1)
+    jira=$(echo "$subject" | grep -oE "$TICKET_REGEX" | head -1)
     
     # Print file and commit info
     echo -e "    ${MAGENTA}${display_file}${NC}"
@@ -444,15 +449,19 @@ count_developer_stats() {
 
     local total=$(git_log_for_author "$author_filter" --oneline | wc -l | tr -d ' ')
     local unique_tickets=$(git_log_for_author "$author_filter" --pretty=format:"%s" | \
-        grep -oE "${TICKET_PREFIX}[0-9]+" | sort | uniq | wc -l | tr -d ' ')
+        grep -oE "$TICKET_REGEX" | sort | uniq | wc -l | tr -d ' ')
 
     if [ "$total" -gt 0 ]; then
         # Commits per ticket ratio bar (max bar = 5 commits/ticket)
-        local ratio_x10=$(( unique_tickets > 0 ? total * 10 / unique_tickets : 0 ))
+        local ratio_x10=0
+        local commits_per_ticket=$total
+        if [ "$unique_tickets" -gt 0 ]; then
+            ratio_x10=$(( total * 10 / unique_tickets ))
+            commits_per_ticket=$(( total / unique_tickets ))
+        fi
         local bar_len=$(( ratio_x10 > 50 ? 20 : ratio_x10 * 20 / 50 ))
         [[ $bar_len -lt 1 ]] && bar_len=1
         local bar=$(printf '█%.0s' $(seq 1 $bar_len))
-        local commits_per_ticket=$(( unique_tickets > 0 ? total / unique_tickets : total ))
         echo -e "  ${CYAN}───────────────────────────────────────────────────────${NC}"
         echo -e "  ${BLUE}$(printf '%-20s' "$author_name")${NC}  🎫 ${YELLOW}$unique_tickets${NC} tickets  📦 ${YELLOW}$total${NC} commits  (~${YELLOW}$commits_per_ticket${NC} commits/ticket)"
         echo -e "  Commits/ticket ${GREEN}$bar${NC}"
@@ -466,7 +475,7 @@ get_sorted_devs() {
     for author in "${USERNAMES[@]}"; do
         local author_filter=$(get_author_filter "$author")
         local ticket_count=$(git_log_for_author "$author_filter" --pretty=format:"%s" | \
-            grep -oE "${TICKET_PREFIX}[0-9]+" | sort | uniq | wc -l | tr -d ' ')
+            grep -oE "$TICKET_REGEX" | sort | uniq | wc -l | tr -d ' ')
         echo "$ticket_count|$author" >> "$temp_file"
     done
     
@@ -500,9 +509,9 @@ count_tickets_by_author() {
     
     # Get all unique JIRA tickets for this author
     local tickets=$(git_log_for_author "$author_filter" --pretty=format:"%s" | \
-        grep -oE "${TICKET_PREFIX}[0-9]+" | sort | uniq)
+        grep -oE "$TICKET_REGEX" | sort | uniq)
     
-    local ticket_count=$(echo "$tickets" | grep -c "${TICKET_PREFIX}" 2>/dev/null | tr -d ' \n' || echo "0")
+    local ticket_count=$(echo "$tickets" | grep -c "$TICKET_REGEX" 2>/dev/null | tr -d ' \n' || echo "0")
     
     if [ "$ticket_count" -gt 0 ]; then
         echo -e "  ${BLUE}$author_name${NC} (${YELLOW}$ticket_count${NC} tickets):"
@@ -551,7 +560,7 @@ while IFS='|' read -r date author hash subject; do
     fi
     
     # Extract JIRA ticket if present
-    jira=$(echo "$subject" | grep -oE "${TICKET_PREFIX}[0-9]+" | head -1)
+    jira=$(echo "$subject" | grep -oE "$TICKET_REGEX" | head -1)
     
     # Print commit info
     if [ -n "$jira" ]; then
