@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import "./chartSetup";
 import type { ReportData, TeamMember } from "./types";
 import DateRangePicker from "./components/DateRangePicker";
@@ -21,6 +21,8 @@ import LinesByAuthorChart from "./components/LinesByAuthorChart";
 import { exportReportToExcel } from "./exportToExcel";
 
 type AppState = "form" | "loading" | "report" | "error";
+type RepoSource = "local" | "url";
+type ValidationState = "idle" | "validating" | "valid" | "invalid";
 
 export default function App() {
   const [state, setState] = useState<AppState>("form");
@@ -29,15 +31,93 @@ export default function App() {
 
   const [startDate, setStartDate] = useState("30 days ago");
   const [endDate, setEndDate] = useState("now");
+  const [repoSource, setRepoSource] = useState<RepoSource>("local");
   const [repoPath, setRepoPath] = useState("");
+  const [repoUrl, setRepoUrl] = useState("");
+  const [urlValidation, setUrlValidation] = useState<ValidationState>("idle");
+  const [urlError, setUrlError] = useState("");
   const [jiraKey, setJiraKey] = useState("");
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [filterByTeam, setFilterByTeam] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
+  const validateTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const effectiveRepoPath = repoSource === "local" ? repoPath : repoUrl;
+
+  const validateUrl = useCallback(async (url: string) => {
+    if (!url.trim()) {
+      setUrlValidation("idle");
+      setUrlError("");
+      return;
+    }
+
+    try {
+      new URL(url);
+    } catch {
+      setUrlValidation("invalid");
+      setUrlError("Please enter a valid URL (e.g. https://github.com/owner/repo)");
+      return;
+    }
+
+    setUrlValidation("validating");
+    setUrlError("");
+
+    try {
+      const res = await fetch("/api/validate-repo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setUrlValidation("valid");
+        setUrlError("");
+      } else {
+        setUrlValidation("invalid");
+        setUrlError(data.error || "Could not access repository");
+      }
+    } catch {
+      setUrlValidation("invalid");
+      setUrlError("Failed to validate URL. Please check your connection.");
+    }
+  }, []);
+
+  async function handleBrowseFolder() {
+    setBrowsing(true);
+    try {
+      const res = await fetch("/api/browse-folder", { method: "POST" });
+      const data = await res.json();
+      if (!data.cancelled && data.path) {
+        setRepoPath(data.path);
+      }
+    } catch {
+      // dialog was cancelled or failed
+    } finally {
+      setBrowsing(false);
+    }
+  }
+
+  function handleUrlChange(value: string) {
+    setRepoUrl(value);
+    setUrlValidation("idle");
+    setUrlError("");
+
+    if (validateTimerRef.current) clearTimeout(validateTimerRef.current);
+    if (value.trim()) {
+      validateTimerRef.current = setTimeout(() => validateUrl(value), 800);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setState("loading");
     setError("");
+
+    if (repoSource === "url" && urlValidation !== "valid") {
+      setError("Please enter a valid public repository URL and wait for validation.");
+      setState("error");
+      return;
+    }
 
     const activeTeam = filterByTeam
       ? team.filter((m) => m.username.trim() && m.pattern.trim())
@@ -50,7 +130,7 @@ export default function App() {
         body: JSON.stringify({
           startDate,
           endDate,
-          repoPath,
+          repoPath: effectiveRepoPath,
           jiraKey,
           team: activeTeam,
         }),
@@ -95,13 +175,80 @@ export default function App() {
             onEndChange={setEndDate}
           />
           <div className="form-group">
-            <label>Repository Path or Public URL</label>
-            <input
-              value={repoPath}
-              onChange={(e) => setRepoPath(e.target.value)}
-              placeholder="/absolute/path/to/repo or https://github.com/owner/repo"
-              required
-            />
+            <label>Repository Source</label>
+            <div className="repo-source-toggle">
+              <button
+                type="button"
+                className={`source-btn ${repoSource === "local" ? "active" : ""}`}
+                onClick={() => setRepoSource("local")}
+              >
+                Local Path
+              </button>
+              <button
+                type="button"
+                className={`source-btn ${repoSource === "url" ? "active" : ""}`}
+                onClick={() => setRepoSource("url")}
+              >
+                Public URL
+              </button>
+            </div>
+
+            {repoSource === "local" ? (
+              <div className="repo-local-input">
+                <div className="local-input-row">
+                  <input
+                    value={repoPath}
+                    onChange={(e) => setRepoPath(e.target.value)}
+                    placeholder="/absolute/path/to/repo"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="browse-btn"
+                    onClick={handleBrowseFolder}
+                    disabled={browsing}
+                    title="Browse for folder"
+                  >
+                    {browsing ? (
+                      <span className="browse-spinner" />
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 5C2 3.89543 2.89543 3 4 3H7.17157C7.70201 3 8.21071 3.21071 8.58579 3.58579L9.41421 4.41421C9.78929 4.78929 10.298 5 10.8284 5H16C17.1046 5 18 5.89543 18 7V15C18 16.1046 17.1046 17 16 17H4C2.89543 17 2 16.1046 2 15V5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                <p className="repo-hint">
+                  Enter the path or browse to select a local git repository.
+                </p>
+              </div>
+            ) : (
+              <div className="repo-url-input">
+                <div className={`url-input-wrapper ${urlValidation}`}>
+                  <input
+                    value={repoUrl}
+                    onChange={(e) => handleUrlChange(e.target.value)}
+                    placeholder="https://github.com/owner/repo"
+                    required
+                  />
+                  <span className="url-status-icon">
+                    {urlValidation === "validating" && (
+                      <span className="url-spinner" />
+                    )}
+                    {urlValidation === "valid" && (
+                      <span className="url-check">&#10003;</span>
+                    )}
+                    {urlValidation === "invalid" && (
+                      <span className="url-cross">&#10007;</span>
+                    )}
+                  </span>
+                </div>
+                {urlError && <p className="repo-error">{urlError}</p>}
+                <p className="repo-hint repo-hint-warn">
+                  Only public repositories are supported. Private repos will fail as authentication is not provided.
+                </p>
+              </div>
+            )}
           </div>
           <div className="form-group">
             <label>JIRA Project Key (optional)</label>
@@ -117,13 +264,19 @@ export default function App() {
             onChange={setTeam}
             enabled={filterByTeam}
             onToggle={setFilterByTeam}
-            repoPath={repoPath}
+            repoPath={effectiveRepoPath}
             startDate={startDate}
             endDate={endDate}
           />
 
-          <button type="submit" className="btn-primary">
-            Generate Report
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={repoSource === "url" && urlValidation !== "valid"}
+          >
+            {repoSource === "url" && urlValidation === "validating"
+              ? "Validating repository..."
+              : "Generate Report"}
           </button>
         </form>
       )}

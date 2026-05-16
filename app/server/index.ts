@@ -123,6 +123,90 @@ interface TeamMember {
   pattern: string;
 }
 
+app.post("/api/browse-folder", async (_req, res) => {
+  try {
+    const platform = process.platform;
+    let folderPath = "";
+
+    if (platform === "darwin") {
+      const { stdout } = await execFileAsync("osascript", [
+        "-e",
+        'set theFolder to choose folder with prompt "Select a Git repository folder"\nreturn POSIX path of theFolder',
+      ], { timeout: 60_000 });
+      folderPath = stdout.trim();
+    } else if (platform === "linux") {
+      const { stdout } = await execFileAsync("zenity", [
+        "--file-selection", "--directory", "--title=Select a Git repository folder",
+      ], { timeout: 60_000 });
+      folderPath = stdout.trim();
+    } else if (platform === "win32") {
+      const psScript = `Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; $f.Description = 'Select a Git repository folder'; if ($f.ShowDialog() -eq 'OK') { $f.SelectedPath } else { '' }`;
+      const { stdout } = await execFileAsync("powershell", ["-Command", psScript], { timeout: 60_000 });
+      folderPath = stdout.trim();
+    }
+
+    if (!folderPath) {
+      res.json({ cancelled: true });
+      return;
+    }
+
+    if (folderPath.endsWith("/") || folderPath.endsWith("\\")) {
+      folderPath = folderPath.slice(0, -1);
+    }
+
+    res.json({ cancelled: false, path: folderPath });
+  } catch {
+    res.json({ cancelled: true });
+  }
+});
+
+app.post("/api/validate-repo", async (req, res) => {
+  const { url } = req.body as { url: string };
+
+  if (!url) {
+    res.status(400).json({ valid: false, error: "URL is required" });
+    return;
+  }
+
+  if (!isHttpsGitUrl(url)) {
+    res.status(400).json({ valid: false, error: "Please enter a valid HTTPS Git URL (e.g. https://github.com/owner/repo)" });
+    return;
+  }
+
+  const repoUrl = normalisePublicRepoUrl(url);
+
+  try {
+    const anonEnv: Record<string, string> = {
+      PATH: process.env.PATH || "",
+      HOME: process.env.HOME || "",
+      GIT_TERMINAL_PROMPT: "0",
+      GIT_ASKPASS: "",
+      GIT_SSH_COMMAND: "ssh -oBatchMode=yes -oStrictHostKeyChecking=accept-new",
+    };
+
+    await execFileAsync(
+      "git",
+      ["-c", "credential.helper=", "ls-remote", "--exit-code", repoUrl, "HEAD"],
+      { timeout: 15_000, maxBuffer: 1024 * 1024, env: anonEnv },
+    );
+    res.json({ valid: true });
+  } catch (err: any) {
+    const stderr = (err?.stderr || "").toLowerCase();
+    if (
+      stderr.includes("could not read") ||
+      stderr.includes("authentication") ||
+      stderr.includes("not found") ||
+      stderr.includes("repository not found") ||
+      stderr.includes("terminal prompts disabled") ||
+      stderr.includes("fatal:")
+    ) {
+      res.json({ valid: false, error: "Repository not found or is private. Only public repositories are supported." });
+    } else {
+      res.json({ valid: false, error: "Could not access the repository. Make sure the URL is correct and the repo is public." });
+    }
+  }
+});
+
 app.post("/api/authors", async (req, res) => {
   const { startDate, endDate, repoPath } = req.body as {
     startDate: string;

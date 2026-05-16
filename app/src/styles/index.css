@@ -101,6 +101,162 @@ code, .mono {
   letter-spacing: 0.05em;
 }
 
+/* Repo source toggle */
+.repo-source-toggle {
+  display: flex;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.source-btn {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.source-btn.active {
+  background: var(--accent-blue);
+  color: white;
+}
+
+.source-btn:not(.active):hover {
+  color: var(--text-secondary);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.repo-local-input,
+.repo-url-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.local-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.local-input-row input {
+  flex: 1;
+}
+
+.browse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--accent-cyan);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.browse-btn:hover:not(:disabled) {
+  border-color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.08);
+  color: var(--text-primary);
+}
+
+.browse-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.browse-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.url-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.url-input-wrapper input {
+  width: 100%;
+  padding-right: 2.5rem;
+}
+
+.url-input-wrapper.valid input {
+  border-color: var(--accent-green);
+}
+
+.url-input-wrapper.invalid input {
+  border-color: var(--accent-red);
+}
+
+.url-input-wrapper.validating input {
+  border-color: var(--accent-amber);
+}
+
+.url-status-icon {
+  position: absolute;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.url-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-amber);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.url-check {
+  color: var(--accent-green);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.url-cross {
+  color: var(--accent-red);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.repo-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.repo-hint-warn {
+  color: var(--accent-amber);
+  opacity: 0.85;
+}
+
+.repo-error {
+  font-size: 0.8rem;
+  color: var(--accent-red);
+  line-height: 1.3;
+}
+
 /* Date picker section */
 .date-picker-section {
   margin-bottom: 1.25rem;
