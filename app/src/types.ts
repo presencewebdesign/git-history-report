@@ -7,6 +7,7 @@ export interface Meta {
   startDate: string;
   endDate: string;
   repoPath: string;
+  repoCachePath?: string;
   generatedAt: string;
   jiraKey: string;
 }

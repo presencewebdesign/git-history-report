@@ -95,11 +95,11 @@ export default function App() {
             onEndChange={setEndDate}
           />
           <div className="form-group">
-            <label>Repository Path</label>
+            <label>Repository Path or Public URL</label>
             <input
               value={repoPath}
               onChange={(e) => setRepoPath(e.target.value)}
-              placeholder="/absolute/path/to/your/repo"
+              placeholder="/absolute/path/to/repo or https://github.com/owner/repo"
               required
             />
           </div>
@@ -132,7 +132,7 @@ export default function App() {
         <div className="loading-container">
           <div className="spinner" />
           <p className="loading-text">
-            Analysing git history... this may take a moment for large repos.
+            Analysing git history... this may take a moment for large or remote repos.
           </p>
         </div>
       )}
