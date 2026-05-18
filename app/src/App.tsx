@@ -40,7 +40,7 @@ export default function App() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [filterByTeam, setFilterByTeam] = useState(false);
   const [browsing, setBrowsing] = useState(false);
-  const validateTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const validateTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const effectiveRepoPath = repoSource === "local" ? repoPath : repoUrl;
 

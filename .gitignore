@@ -3,4 +3,5 @@ dist/
 app/.repo-cache/
 .env
 *.log
+*.tsbuildinfo
 .DS_Store
